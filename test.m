@@ -1,9 +1,11 @@
-df = 0;		% Hz off-resonance.
-T1 = 600;	% ms.
-T2 = 100;	% ms.
-TE = 50;		% ms.
-TR = 1000;	% ms.
-flip = pi/2;	% radians.
-ETL=8;
+fplot('abs(sesignal(600,100,50,x,0))/sqrt(x)',[50,4000],'b-');
+hold on;
+fplot('abs(sesignal(1000,150,50,x,0)/sqrt(x))',[50,4000],'r--');
+fplot('abs(sesignal(600,100,50,x,0)/sqrt(x))-abs(sesignal(1000,150,50,x,0)/sqrt(x))',[50,4000],'g-.');
 
-[Msig,Mss] = fsesignal(T1,T2,TE,TR,df,ETL)
+grid on;
+xlabel('TR (ms)');
+ylabel('Signal efficiency');
+title('Signal efficiency vs TR');
+legend('Tissue A','Tissue B','A-B');
+hold off;

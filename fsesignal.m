@@ -4,7 +4,7 @@ R90 = yrot(pi/2);
 [Atr, Btr] = freeprecess(TR-ETL*TE,T1,T2,df);
 % 在同一个 TR 中，有多少个180x就是多少的ETL。
 % TE/2-180-TE/2 是一个 echo
-Atr = [0 0 0;0 0 0;0 0 1]*Atr;
+% Atr = [0 0 0;0 0 0;0 0 1]*Atr;
 
 R180 = xrot(pi);
 % 计算一整个TR经历的所有算子的叠加
