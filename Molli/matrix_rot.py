@@ -8,8 +8,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def zrot(phi):
     Rz = torch.Tensor(
         # [[math.cos(phi),-math.sin(phi),0],
-        [[math.cos(phi),math.sin(phi),0],
-        [-math.sin(phi),math.cos(phi),0],
+        [[math.cos(phi),-math.sin(phi),0],
+        [math.sin(phi),math.cos(phi),0],
         [0, 0, 1]]
         ).to(device)
     return Rz
@@ -17,8 +17,8 @@ def zrot(phi):
 def xrot(phi):
     Rx = torch.Tensor(
         [[1,0,0],
-        [0,math.cos(phi),math.sin(phi)],
-        [0, -math.sin(phi), math.cos(phi)]]
+        [0,math.cos(phi),-math.sin(phi)],
+        [0, math.sin(phi), math.cos(phi)]]
         ).to(device)
     return Rx
 

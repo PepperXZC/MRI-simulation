@@ -7,79 +7,95 @@ import math
 # 默认全部都是 180y, 10y
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# points: m*3，m为抽样的点的个数
-def rot(points:torch.Tensor, phi = torch.pi):
+# point: m*3，m为抽样的点的个数
+def rot(point:torch.Tensor, phi = torch.pi):
     # 返回 m*3，每条m仍为每个样本不变
-    return points @ matrix_rot.zrot(phi).T
+    return point @ matrix_rot.zrot(phi).T
 
-def molli(info, points:torch.Tensor):
-    # for LL in info.TI: # 每个不同的TI是一次LL Experiment
-    # m = torch.Tensor([0,0,1]).to(device).T
-    # 默认是 1*3 的 [0,0,1] 开始
+def relax(time, point, result, A, B):
+    for _ in range(time):
+        point = point @ A.T + B
+            # result[N_dt * index + dp + 1] = point[2]
+            # dp += 1
+        result.append(point[2])
+    return point, result
 
-    # E1 = math.exp(- info.TR / info.T1_generate)
-    # A_TI_1, B_TI_1 = freprecess.res(info.TI[0], info.T1_generate, info.T2, info.df)
-    # A_TI_2, B_TI_2 = freprecess.res(info.TI[1], info.T1_generate, info.T2, info.df)
+def molli(info, point:torch.Tensor):
     Rflip_180 = matrix_rot.yrot(torch.pi) # 180y
     Rflip_10 = matrix_rot.yrot( info.fa_10 ) # 180y
-        # Ei = info.fa_slice[index]
-        # 有多少个 excitation 就做几次
-    num_excitation = 2
+    num_excitation = 3
 
-    # 5-3
-    dt = 0.05
+    dt = 1
     N_per_ext = int(info.TI / dt)
     
     # N_TI_5, N_TI_3 = int(info.TR[0] / dt), int(info.TR[1] / dt)
     N_per_interval = int(info.TR / dt)
-    N_5_rest = int(N_per_ext - N_per_interval * 4 - info.t_before[0])
+    N_5_rest = int(N_per_ext - N_per_interval * 1 - info.t_before[0])
     N_3_rest = int(N_per_ext - N_per_interval * 2 - info.t_before[1])
 
     N_dt = num_excitation * N_per_ext
-    # result = torch.zeros(N_dt * 5 + 1)
-    # result[0] = points[2]
+
     result = []
-    result.append(points[2])
+    result.append(point[2])
 
     for index in range(num_excitation):
-        # dp = 0
-        points = points @ Rflip_180.T
-        # result[N_dt * index + dp + 1] = points[2]
-        result.append(points[2])
-        # dp += 1
-        A, B = freprecess.res(dt, info.T1_generate, info.T2, info.df)
-        for _ in range(info.t_before[0]):
-            points = points @ A.T + B
-            # result[N_dt * index + dp + 1] = points[2]
-            # dp += 1
-            result.append(points[2])
+        point = point @ Rflip_180.T
+        result.append(point[2])
+        A, B = freprecess.res(dt, info.T1, info.T2, info.df)
+        point, result = relax(info.t_before[0], point, result, A, B)
         for _ in range(4):
-            points = points @ Rflip_10.T
-            # result[N_dt * index + dp + 1] = points[2]
-            # dp += 1 
-            result.append(points[2])
-            for _ in range (N_per_interval):
-                points = points @ A.T + B
-                # result[N_dt * index + dp + 1] = points[2]
-                # dp += 1
-                result.append(points[2])
-        for _ in range(N_5_rest):
-            points = points @ A.T + B
-            # result[N_dt * index + dp + 1] = points[2]
-            # dp += 1
-            result.append(points[2])
+            point = point @ Rflip_10.T
+            result.append(point[2])
+            point, result = relax(N_per_interval, point, result, A, B)
+        point, result = relax(N_5_rest, point, result, A, B)
     return result
 
-        # points = points @ A_TI_1.T + B_TI_1 # 每个样本都会加上B
-        # result[N_dt * index * dp] = points[2]
+        # point = point @ A_TI_1.T + B_TI_1 # 每个样本都会加上B
+        # result[N_dt * index * dp] = point[2]
         # dp += 1
         # A, B = freprecess.res(dt, info.T1_generate, info.T2, info.df)
         # for i in range(N_dt - 2):
-        #     points = points @ A.T + B
-        #     result[N_dt * index * dp] = points[2]
+        #     point = point @ A.T + B
+        #     result[N_dt * index * dp] = point[2]
         #     dp += 1
 
+def Mz_relax(info, time:torch.Tensor, point, point_after_0):
+    point_list = torch.zeros(len(time), 3)
+    point_list[:,2] = point * (1 - torch.exp(- time / info.T1)) + point_after_0[2] * torch.exp(- time / info.T1)
+    return point_list
 
-# def readoutplus(m, m0, p, E1, info, index):
-#     k = E1 * torch.cos(info.fa_slice[index])
-#     b = m0 *  (1 - E1) * (1 - torch.pow(k, ))
+def molli_relax(info, point:torch.Tensor):
+    result = []
+    Rflip_180 = matrix_rot.yrot(torch.pi) # 180y
+    Rflip_10 = matrix_rot.yrot( info.fa_10 ) # 180y
+
+    result.append(point[2])
+
+    point = point @ Rflip_180.T
+    result.append(point[2])
+
+    dt = 0.01
+    time_before = torch.arange(0, info.t_before[0], dt)
+    point_before = Mz_relax(info, time_before, 1, point)
+    result += point_before[:, 2].tolist()
+    point = result[-1]
+
+    t_rest_5 = info.TI - info.t_before[0] - info.TR * 4
+
+    for i in range(4):
+        # point = point @ Rflip_10.T
+        point = torch.Tensor([0, 0, point]) @ Rflip_10.T
+        result.append(point[2])
+        # time_interval = torch.arange(info.t_before[0] + i * info.TR, info.t_before[0] + (i+1) * info.TR, dt)
+        time_interval = torch.arange(0, info.TR, dt)
+        point_interval = Mz_relax(info, time_interval, 1, point)
+        result += point_interval[:, 2].tolist()
+        point = result[-1]
+    
+    point = torch.Tensor([0, 0, point])
+    time_rest = torch.arange(0, t_rest_5, dt)
+    point_rest = Mz_relax(info, time_rest, 1, point)
+    result += point_before[:, 2].tolist()
+    point = result[-1]
+    
+    return result
