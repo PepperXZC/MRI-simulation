@@ -1,0 +1,15 @@
+function [Msig,Mss] = sesignal(T1,T2,TE,TR,dfreq)
+
+[Ate2, Bte2] = freeprecess(TE / 2,T1,T2,dfreq); % 0-TE, TE/2-TE 都可以用这个
+[Atetr, Btetr] = freeprecess(TR - TE,T1,T2,dfreq);
+
+Atetr = [0 0 0; 0 0 0; 0 0 1] * Atetr; % 只在这一段去取Mz？
+M = [0;0;1];
+
+Rflip1 = yrot(pi/2);
+Rflip2 = xrot(pi);
+
+M = Ate * Rflip1 * M + Bte;
+
+M = Rflip2 * M;
+M = Atetr * M + Btetr

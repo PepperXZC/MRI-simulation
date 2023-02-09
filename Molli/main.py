@@ -17,8 +17,9 @@ class info:
         TR = 10,
         rep_time = 1, # 假设每个RF给出 rep_time 个读取次数 
         TI_5 = [50, 150, 250, 350, 450],
+        # TI_5 = [],
         TI_3 = [100, 200, 300],
-        t_before = [20,20],
+        # TI_3 = [],
         # 因为不知道第一个read开始之前有多少时间间隙
         FA_pulse = math.pi,
         FA_small =  10 * math.pi / 180,
@@ -26,7 +27,8 @@ class info:
         fa_readout = [[10, 10, 10, 10, 10], [10, 10, 10]],
         df = 30,
         t_interval = 30,
-        total_time = [800, 500] # 5-3-3
+        total_time = [600, 500], # 5-3-3
+        num_excitation = 1,
     ) -> None:
         '''
         在这里，整体的时间如下(按顺序)：
@@ -39,12 +41,12 @@ class info:
         self.rep_time = rep_time
         self.fa_10 = FA_small
         self.TR = TR
-        self.t_before = t_before
         self.df = df
         self.total_time = total_time
         self.T2 = T2
         self.fa_180 = FA_pulse
         self.t_interval = t_interval
+        self.num_excitation = num_excitation
         # self.fa_slice = fa_slice # 由 Slice profile 给出, 
         # 是个 5 维向量，因为有5个fa
         # 先不管它的 sub-slice 版本！只是一个数
@@ -59,12 +61,15 @@ test_info = info()
 
 m0 = torch.Tensor([0,0,1]).to(device).T
 # result = sequence.molli_relax(test_info, m0)
-x_time, point, result = sequence.molli(test_info, m0)
-x = torch.arange(0, len(result), 1)
+program = sequence.molli(test_info)
+# x = torch.arange(0, len(result), 1)
+program.simulation()
+# for t in program.x_time:
+#     program.catch(t)
 # print([key[2] for key in result])
-plt.plot(x_time, [key[2] for key in result], color='b', label='Mz')
-plt.plot(x_time, [key[0] for key in result], color='r', label='Mx')
-plt.plot(x_time, [key[1] for key in result], color='g', label='My')
+plt.plot(program.x_time, [key[2] for key in program.result], color='b', label='Mz')
+plt.plot(program.x_time, [key[0] for key in program.result], color='r', label='Mx')
+plt.plot(program.x_time, [key[1] for key in program.result], color='g', label='My')
 plt.legend(loc=0)
 plt.show()
 
@@ -92,5 +97,4 @@ plt.show()
 # plt.xlabel('Time (ms)')
 # plt.ylabel('Magnetization')
 # # plt.axis([min(time) max(time) -1 1]);
-# # grid on;
-# plt.show()
+# # grid on; 

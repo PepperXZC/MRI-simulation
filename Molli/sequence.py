@@ -21,68 +21,107 @@ def relax(x, time, point, result, A, B, dt):
         x.append(x[-1] + dt)
     return x, point, result
 
-def molli(info, point:torch.Tensor):
+class molli:
+    def __init__(self, info) -> None:
+        self.point = torch.Tensor([0,0,1]).to(device).T # 初始化
+        self.info = info
+        self.Rflip_10 = matrix_rot.yrot( info.fa_10 )
+        self.Rflip_180 = matrix_rot.yrot(torch.pi)
     # 因为考虑到 10y 中有RF，需要同时制作时刻表 x_time
-    Rflip_180 = matrix_rot.yrot(torch.pi) # 180y
-    Rflip_10 = matrix_rot.yrot( info.fa_10 ) # 180y
-    num_excitation = 1
-
-    dt = 1
+        self.dt = 0.1
+        self.N_TI_5 = [int(num / self.dt) for num in info.TI_5]
+        self.N_TI_3 = [int(num / self.dt) for num in info.TI_3]
+        self.N_per_ext_5 = int(info.total_time[0] / self.dt)
+        self.N_per_ext_3 = int(info.total_time[1] / self.dt)
+        if len(self.N_TI_5) != 0:
+            self.N_5_rest = int(self.N_per_ext_5 - self.N_TI_5[-1] - info.TR * info.rep_time / self.dt)
+        else:
+            self.N_5_rest = int(self.N_per_ext_5 - info.TR * info.rep_time / self.dt)
     
-    N_TI_5 = [int(num / dt) for num in info.TI_5]
-    N_TI_3 = [int(num / dt) for num in info.TI_3]
+        if len(self.N_TI_3) != 0:
+            self.N_3_rest = int(self.N_per_ext_3 - self.N_TI_3[-1] - info.TR * info.rep_time / self.dt)
+        else:
+            self.N_3_rest = int(self.N_per_ext_3 - info.TR * info.rep_time / self.dt)
+    # num_excitation = 1
+        self.result = []
+        self.result.append(self.point)
+        self.x_time = []
+        self.x_time.append(0)
+    
+    def simulation(self):
+        A, B = freprecess.res(self.dt, self.info.T1, self.info.T2, self.info.df)
+        for index in range(self.info.num_excitation):
+            self.point = self.point @ self.Rflip_180.T
+            self.result.append(self.point)
+            self.x_time.append(self.x_time[-1] + self.dt)
+            # 假设 180y 是在同一个dt完成，也就是瞬间完成
+            
+            # point, result = relax(info.t_before[0], point, result, A, B)
+            # for index in range(len(info.TI_5)):
 
-    N_per_ext_5 = int(info.total_time[0] / dt)
-    N_per_ext_3 = int(info.total_time[1] / dt)
+            for i in range(len(self.info.TI_5)):
+                self.point = self.point @ self.Rflip_10.T
+                self.result.append(self.point)
+                self.x_time.append(self.x_time[-1] + self.info.TR * self.info.rep_time)
+
+                if i != len(self.info.TI_5) - 1:
+                    n_interval = int((self.info.TI_5[i + 1] - self.info.TI_5[i] - self.info.TR * self.info.rep_time) / self.dt)
+                else:
+                    n_interval = self.N_5_rest
+
+                self.x_time, self.point, self.result = relax(self.x_time, n_interval, self.point, self.result, A, B, self.dt)
+            
+            if len(self.info.TI_5) == 0:
+                self.x_time, self.point, self.result = relax(self.x_time, self.N_5_rest, self.point, self.result, A, B, self.dt)
+
+            self.point = self.point @ self.Rflip_180.T
+            self.result.append(self.point)
+            self.x_time.append(self.x_time[-1] + self.dt)
+
+            for i in range(len(self.info.TI_3)):
+                self.point = self.point @ self.Rflip_10.T
+                self.result.append(self.point)
+                self.x_time.append(self.x_time[-1] + self.info.TR * self.info.rep_time)
+
+                if i != len(self.info.TI_3) - 1:
+                    n_interval = int((self.info.TI_3[i + 1] - self.info.TI_3[i] - self.info.TR * self.info.rep_time) / self.dt)
+                else:
+                    n_interval = self.N_3_rest
+
+                self.x_time, self.point, self.result = relax(self.x_time, n_interval, self.point, self.result, A, B, self.dt)
+
+            # x_time, point, result = relax(x_time, N_5_rest, point, result, A, B, dt)
+            if len(self.info.TI_3) == 0:
+                self.x_time, self.point, self.result = relax(self.x_time, self.N_3_rest, self.point, self.result, A, B, self.dt)
+    
+    def catch(self,t):
+        if type(self.dt) == int:
+            t = int(round(t, 0))
+        else:
+            t = round(t, len(str(self.dt))-2)
+        assert t in self.x_time
+        index = self.x_time.index(t)
+        return self.result[index]
+
+
+    # print(point, result[0][2])
+    # return x_time, point, result
+    
+
+    
     
     # N_TI_5, N_TI_3 = int(info.TR[0] / dt), int(info.TR[1] / dt)
     # N_per_interval = int(info.TR / dt)
     # N_5_rest = int(N_per_ext_5 - N_per_interval * 1 - info.t_before[0])
-    N_5_rest = int(N_per_ext_5 - N_TI_5[-1] - info.TR * info.rep_time / dt)
-    N_3_rest = int(N_per_ext_3 - N_TI_3[-1] - info.TR * info.rep_time / dt)
+    
     # print(N_TI, N_5_rest)
     # N_3_rest = int(N_per_ext_3 - N_per_interval * 2 - info.t_before[1])
-    
 
     # N_dt = num_excitation * N_per_ext
 
-    result = []
-    result.append(point)
-    x_time = []
-    x_time.append(0)
+    
 
-    for index in range(num_excitation):
-        point = point @ Rflip_180.T
-        result.append(point)
-        x_time.append(x_time[-1] + dt)
-        # 假设 180y 是在同一个dt完成，也就是瞬间完成
-        A, B = freprecess.res(dt, info.T1, info.T2, info.df)
-        # point, result = relax(info.t_before[0], point, result, A, B)
-        # for index in range(len(info.TI_5)):
-        for i in range(len(info.TI_5)):
-            point = point @ Rflip_10.T
-            result.append(point)
-            x_time.append(x_time[-1] + info.TR * info.rep_time)
-            if i != len(info.TI_5) - 1:
-                n_interval = int((info.TI_5[i + 1] - info.TI_5[i] - info.TR * info.rep_time) / dt)
-            else:
-                n_interval = N_5_rest
-            x_time, point, result = relax(x_time, n_interval, point, result, A, B, dt)
-        point = point @ Rflip_180.T
-        result.append(point)
-        x_time.append(x_time[-1] + dt)
-        for i in range(len(info.TI_3)):
-            point = point @ Rflip_10.T
-            result.append(point)
-            x_time.append(x_time[-1] + info.TR * info.rep_time)
-            if i != len(info.TI_3) - 1:
-                n_interval = int((info.TI_3[i + 1] - info.TI_3[i] - info.TR * info.rep_time) / dt)
-            else:
-                n_interval = N_3_rest
-            x_time, point, result = relax(x_time, n_interval, point, result, A, B, dt)
-        # x_time, point, result = relax(x_time, N_5_rest, point, result, A, B, dt)
-    # print(point, result[0][2])
-    return x_time, point, result
+   
 
         # point = point @ A_TI_1.T + B_TI_1 # 每个样本都会加上B
         # result[N_dt * index * dp] = point[2]
