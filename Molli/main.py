@@ -85,4 +85,4 @@ plt.show()
 # plt.plot(program.x_time, [key[1] for key in program.result], color='g', label='My')
 # plt.show()
 
-print(program.x_time[0])
+# print(program.x_time[0])
