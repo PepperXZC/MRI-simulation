@@ -19,7 +19,10 @@ def relax(x, time, point, result, A, B, dt):
             # dp += 1
         result.append(point)
         # result = [temp_list + [point] for temp_list in result]
-        x.append(x[-1] + dt)
+        if dt < 1:
+            x.append(round(x[-1] + dt, len(str(dt))-2))
+        else:
+            x.append(x[-1] + dt)
     return x, point, result
 
 class molli:
