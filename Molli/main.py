@@ -32,8 +32,8 @@ class info:
         # TI_3 = [],
         # 因为不知道第一个read开始之前有多少时间间隙
         FA_pulse = math.pi,
-        FA_small =  [10 * math.pi / 180],
-        # FA_small = torch.arange(5, 35, 5) * math.pi / 180,
+        # FA_small =  [10 * math.pi / 180],
+        FA_small = torch.arange(5, 35, 5) * math.pi / 180,
         # fa_slice = 10,
         df = 30,
         t_interval = 30,
@@ -94,7 +94,7 @@ def main():
     # for t in program.x_time:
     #     program.catch(t)
     # print([key[2] for key in result])
-    print(program.readout_time)
+    # print(program.readout_time)
     ro_time = torch.Tensor(program.readout_time)
     index = [0,5,1,6,2,7,3,4]
     ro_time = program.get_ro_time()
@@ -107,12 +107,22 @@ def main():
         pool_info[i] = test_pool.pool
         last_t = ro_time[i]
     # print(program.get_ro_time())
-    # print(program.x_time[0][:10])
+    # print(len(program.x_time[0]))
+    for index in range(len(test_info.fa_10)):
+        angle = int(test_info.fa_10[index] * 180 / math.pi)
+        plt.plot(program.x_time[0], [key[2] for key in program.result[index]], color=randomcolor(), label=str(angle))
+    plt.legend(loc=0)
+    plt.show()
+    # 下面这个过程检查 是否每两个时刻间隔都是 0.1
+    # for i in range(1, len(program.x_time[0])):
+    #     if (len(str(program.x_time[0][i])) - len(str(program.x_time[0][i-1]))) > 1:
+    #         print('False', program.x_time[0][i], program.x_time[0][i - 1])
+    # 9503 = 5 * TR * rep_time
     # [0, 0.1, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8]
     #  在 x_time 中存在数据缺省: 我们跳过了 TR * reptime 之间的间隔，选择直接得到结果了
     # 需要补全这中间的间隔
-    print(pool_info[0][0][0])
-    print(program.x_time[0].index(pool_info[0][0][0]))
+    # print(pool_info[0][0][0])
+    # print(program.x_time[0].index(pool_info[0][0][0]))
     # print(program.readout533())
 
 main()
