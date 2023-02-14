@@ -83,6 +83,24 @@ class info:
     def get_readout_time(self):
         return (self.TI_5 + self.TI_3)
 
+def plot_5_graph(info_sample, molli_sample):
+    for index in range(len(info_sample.fa_10)):
+        angle = int(info_sample.fa_10[index] * 180 / math.pi)
+        plt.plot(molli_sample.x_time[0], [key[2] for key in molli_sample.result[index]], color=randomcolor(), label=str(angle))
+    plt.legend(loc=0)
+    plt.show()
+
+def readout_pool(info_sample, molli_sample):
+    ro_time = molli_sample.get_ro_time()
+    test_pool = experiment.pool(info_sample)
+    pool_info = torch.zeros(len(ro_time), info_sample.fov, info_sample.fov)
+    last_t = 0
+    for i in range(len(ro_time)):
+        t_interval = ro_time[i] - last_t
+        test_pool.roll(t_interval)
+        pool_info[i] = test_pool.pool
+        last_t = ro_time[i]
+
 def main():
     test_info = info()
 
@@ -97,22 +115,13 @@ def main():
     # print(program.readout_time)
     ro_time = torch.Tensor(program.readout_time)
     index = [0,5,1,6,2,7,3,4]
-    ro_time = program.get_ro_time()
-    test_pool = experiment.pool(test_info)
-    pool_info = torch.zeros(len(ro_time), test_info.fov, test_info.fov)
-    last_t = 0
-    for i in range(len(ro_time)):
-        t_interval = ro_time[i] - last_t
-        test_pool.roll(t_interval)
-        pool_info[i] = test_pool.pool
-        last_t = ro_time[i]
+    
+    
+    
+    plot_5_graph(test_info, program)
     # print(program.get_ro_time())
     # print(len(program.x_time[0]))
-    for index in range(len(test_info.fa_10)):
-        angle = int(test_info.fa_10[index] * 180 / math.pi)
-        plt.plot(program.x_time[0], [key[2] for key in program.result[index]], color=randomcolor(), label=str(angle))
-    plt.legend(loc=0)
-    plt.show()
+    
     # 下面这个过程检查 是否每两个时刻间隔都是 0.1
     # for i in range(1, len(program.x_time[0])):
     #     if (len(str(program.x_time[0][i])) - len(str(program.x_time[0][i-1]))) > 1:
