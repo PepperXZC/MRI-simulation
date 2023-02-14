@@ -79,79 +79,57 @@ class molli:
         self.x_time[pulse_index].append(new_time)
         self.result[pulse_index].append(new_point)
     
-    # def ti_relax(self, ti_info)
+    def ti_relax(self, pulse_index, ti_info, A, B):
+        for i in range(len(ti_info)):
+            if i == 0:
+                rest = ti_info[0]
+                self.x_time[pulse_index], self.point, self.result[pulse_index] = relax(self.x_time[pulse_index], rest, self.point, self.result[pulse_index], A, B, self.dt)
+
+            now_point = self.point              
+            self.point = self.point @ self.Rflip_10[pulse_index].T
+            # self.result[pulse_index].append(self.point)
+            # self.result = [temp_list + [self.point] for temp_list in self.result]
+            now_time = self.x_time[pulse_index][-1]
+            after_read_time = now_time + self.info.TR * self.info.rep_time
+            # self.x_time[pulse_index].append(after_read_time)
+            self.insert_points(pulse_index, now_point, now_time, self.point, after_read_time)
+            self.readout_time.append(after_read_time)
+            # self.x_time = [temp_list + [temp_list[-1] + self.info.TR * self.info.rep_time] for temp_list in self.x_time]
+
+            assert len(self.x_time[0]) == len(self.result[0])
+            if i != len(ti_info) - 1:
+                n_interval = int((ti_info[i + 1] - ti_info[i] - self.info.TR * self.info.rep_time) / self.dt)
+            else:
+                n_interval = self.N_5_rest
+
+            self.x_time[pulse_index], self.point, self.result[pulse_index] = relax(self.x_time[pulse_index], n_interval, self.point, self.result[pulse_index], A, B, self.dt)
+
+            assert len(self.x_time[0]) == len(self.result[0])
+        if len(ti_info) == 0:
+            self.x_time[pulse_index], self.point, self.result[pulse_index] = relax(self.x_time[pulse_index], self.N_5_rest, self.point, self.result[pulse_index], A, B, self.dt)
+
+    def inversion_relax(self, pulse_index):
+        self.point = self.point @ self.Rflip_180.T
+        self.result[pulse_index].append(self.point)
+        # 因为 result 是多维的列表所以原本的 append 操作要按照下面这个来写
+        # self.result = [temp_list + [self.point] for temp_list in self.result]
+        self.x_time[pulse_index].append(self.x_time[pulse_index][-1] + self.dt)
 
     def simulation(self):
         A, B = freprecess.res(self.dt, self.info.T1, self.info.T2, self.info.df)
         for pulse_index in range(len(self.Rflip_10)):
             self.point = self.m0
             for _ in range(self.info.num_excitation):
-                self.point = self.point @ self.Rflip_180.T
-                self.result[pulse_index].append(self.point)
-                # 因为 result 是多维的列表所以原本的 append 操作要按照下面这个来写
-                # self.result = [temp_list + [self.point] for temp_list in self.result]
-                self.x_time[pulse_index].append(self.x_time[pulse_index][-1] + self.dt)
+                self.inversion_relax(pulse_index)
                 # self.x_time = [temp_list + [temp_list[-1] + self.dt] for temp_list in self.x_time]
                 # 假设 180y 是下一个dt完成，也就是瞬间完成
-                assert len(self.x_time[0]) == len(self.result[0])            
-                for i in range(len(self.info.TI_5)):
-                    if i == 0:
-                        rest = self.info.TI_5[0]
-                        self.x_time[pulse_index], self.point, self.result[pulse_index] = relax(self.x_time[pulse_index], rest, self.point, self.result[pulse_index], A, B, self.dt)
-
-                    now_point = self.point              
-                    self.point = self.point @ self.Rflip_10[pulse_index].T
-                    # self.result[pulse_index].append(self.point)
-                    # self.result = [temp_list + [self.point] for temp_list in self.result]
-                    now_time = self.x_time[pulse_index][-1]
-                    after_read_time = now_time + self.info.TR * self.info.rep_time
-                    # self.x_time[pulse_index].append(after_read_time)
-                    self.insert_points(pulse_index, now_point, now_time, self.point, after_read_time)
-                    self.readout_time.append(after_read_time)
-                    # self.x_time = [temp_list + [temp_list[-1] + self.info.TR * self.info.rep_time] for temp_list in self.x_time]
-
-                    assert len(self.x_time[0]) == len(self.result[0])
-                    if i != len(self.info.TI_5) - 1:
-                        n_interval = int((self.info.TI_5[i + 1] - self.info.TI_5[i] - self.info.TR * self.info.rep_time) / self.dt)
-                    else:
-                        n_interval = self.N_5_rest
-
-                    self.x_time[pulse_index], self.point, self.result[pulse_index] = relax(self.x_time[pulse_index], n_interval, self.point, self.result[pulse_index], A, B, self.dt)
-
-                    assert len(self.x_time[0]) == len(self.result[0])
-                if len(self.info.TI_5) == 0:
-                    self.x_time[pulse_index], self.point, self.result[pulse_index] = relax(self.x_time[pulse_index], self.N_5_rest, self.point, self.result[pulse_index], A, B, self.dt)
-
-                self.point = self.point @ self.Rflip_180.T
-                self.result[pulse_index].append(self.point)
-                # self.result = [temp_list + [self.point] for temp_list in self.result]
-                self.x_time[pulse_index].append(self.x_time[pulse_index][-1] + self.dt)
-                # self.x_time = [temp_list + [temp_list[-1] + self.dt] for temp_list in self.x_time]
+                assert len(self.x_time[0]) == len(self.result[0])                            
+                self.ti_relax(pulse_index, self.info.TI_5, A, B)
+                self.inversion_relax(pulse_index)
                 assert len(self.x_time[0]) == len(self.result[0])
-                for i in range(len(self.info.TI_3)):
-                    now_point = self.point
-                    # self.point = self.point @ self.Rflip_10.T
-                    self.point = self.point @ self.Rflip_10[pulse_index].T
-                    # self.result[pulse_index].append(self.point)
-                    # self.result = [temp_list + [self.point] for temp_list in self.result]
-                    after_read_time = self.x_time[pulse_index][-1] + self.info.TR * self.info.rep_time
-                    now_time = self.x_time[pulse_index][-1]
-                    self.insert_points(pulse_index, now_point, now_time, self.point, after_read_time)
-                    self.readout_time.append(after_read_time)
-                    # self.x_time[pulse_index].append(after_read_time)
-                    # self.readout_time.append(after_read_time)
-                    # self.x_time = [temp_list + [temp_list[-1] + self.info.TR * self.info.rep_time] for temp_list in self.x_time]
 
-                    if i != len(self.info.TI_3) - 1:
-                        n_interval = int((self.info.TI_3[i + 1] - self.info.TI_3[i] - self.info.TR * self.info.rep_time) / self.dt)
-                    else:
-                        n_interval = self.N_3_rest
-
-                    self.x_time[pulse_index], self.point, self.result[pulse_index] = relax(self.x_time[pulse_index], n_interval, self.point, self.result[pulse_index], A, B, self.dt)
-                    assert len(self.x_time[0]) == len(self.result[0])
-                # x_time, point, result = relax(x_time, N_5_rest, point, result, A, B, dt)
-                if len(self.info.TI_3) == 0:
-                    self.x_time[pulse_index], self.point, self.result[pulse_index] = relax(self.x_time[pulse_index], self.N_3_rest, self.point, self.result[pulse_index], A, B, self.dt)
+                self.ti_relax(pulse_index, self.info.TI_3, A, B)
+                
     
     def catch(self,t):
         if type(self.dt) == int:
