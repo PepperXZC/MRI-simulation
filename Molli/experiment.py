@@ -42,3 +42,4 @@ class pool:
         lower, upper = a - b, a + b
         self.pool[:, lower:upper+1] = self.vassel
 
+class 

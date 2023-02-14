@@ -100,25 +100,23 @@ def readout_pool(info_sample, molli_sample):
         test_pool.roll(t_interval)
         pool_info[i] = test_pool.pool
         last_t = ro_time[i]
+    return pool_info
 
 def main():
     test_info = info()
 
-    m0 = torch.Tensor([0,0,1]).to(device).T
-    # result = sequence.molli_relax(test_info, m0)
+    # m0 = torch.Tensor([0,0,1]).to(device).T
     program = sequence.molli(test_info)
-    # x = torch.arange(0, len(result), 1)
     program.simulation()
     # for t in program.x_time:
     #     program.catch(t)
     # print([key[2] for key in result])
     # print(program.readout_time)
-    ro_time = torch.Tensor(program.readout_time)
-    index = [0,5,1,6,2,7,3,4]
+    # plot_5_graph(test_info, program)
+    test_pool = readout_pool(test_info, program)
+    print(test_pool[0])
     
-    
-    
-    plot_5_graph(test_info, program)
+
     # print(program.get_ro_time())
     # print(len(program.x_time[0]))
     
