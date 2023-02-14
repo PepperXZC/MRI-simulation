@@ -5,20 +5,40 @@ import torch
 import matrix_rot
 import torch
 import freprecess
+import random
 import math
+import sequence
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# point: m*3，m为抽样的点的个数
-def rot(point:torch.Tensor, phi = torch.pi):
-    # 返回 m*3，每条m仍为每个样本不变
-    return point @ matrix_rot.zrot(phi).T
+class pool:
+    def __init__(self, info) -> None:
+        self.info = info
+        self.pool = torch.zeros(self.info.fov, self.info.fov)
+        self.vassel = torch.zeros(self.info.fov, self.info.bandwidth)
+        # 设定随机阈值
+        self.half = 9
+    
+    
+    def roll(self, t):
+        # 规定：每1秒钟，血流数组滚动1个单元
+        each_time = self.info.real_length / self.info.roll_rate
+        rest_time = t
+        now_time = 0
+        # 各管各的变化。先变化pool：
+        self.pool += t
+        # 然后只管 vassel：
+        if rest_time - each_time < 0:
+            self.vassel += rest_time
+        while (rest_time - each_time >= 0):
+            self.vassel += each_time
+            rest_time -= each_time
+            self.vassel = torch.roll(self.vassel, 1, 0)
+            for i in range(len(self.vassel[0])):
+                # if random.randint(1, 10) < self.half:
+                self.vassel[0][i] = 0
+        
+        a, b = int(self.info.fov) // 2, int(self.info.bandwidth) // 2
+        lower, upper = a - b, a + b
+        self.pool[:, lower:upper+1] = self.vassel
 
-def relax(x, time, point, result, A, B, dt):
-    for _ in range(time):
-        point = point @ A.T + B
-            # result[N_dt * index + dp + 1] = point[2]
-            # dp += 1
-        result.append(point)
-        x.append(x[-1] + dt)
-    return x, point, result

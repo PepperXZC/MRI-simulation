@@ -34,7 +34,7 @@ class molli:
         self.Rflip_10 = [matrix_rot.yrot( angle ) for angle in info.fa_10] # list
         self.Rflip_180 = matrix_rot.yrot(torch.pi)
     # 因为考虑到 10y 中有RF，需要同时制作时刻表 x_time
-        self.dt = 0.1
+        self.dt = info.dt
         self.N_TI_5 = [int(num / self.dt) for num in info.TI_5]
         self.N_TI_3 = [int(num / self.dt) for num in info.TI_3]
         self.N_per_ext_5 = int(info.total_time[0] / self.dt)
@@ -125,35 +125,6 @@ class molli:
         index = self.x_time.index(t)
         return [temp_list[index] for temp_list in self.result]
         # return self.result[index]
-
-
-    # print(point, result[0][2])
-    # return x_time, point, result
-    
-
-    
-    
-    # N_TI_5, N_TI_3 = int(info.TR[0] / dt), int(info.TR[1] / dt)
-    # N_per_interval = int(info.TR / dt)
-    # N_5_rest = int(N_per_ext_5 - N_per_interval * 1 - info.t_before[0])
-    
-    # print(N_TI, N_5_rest)
-    # N_3_rest = int(N_per_ext_3 - N_per_interval * 2 - info.t_before[1])
-
-    # N_dt = num_excitation * N_per_ext
-
-    
-
-   
-
-        # point = point @ A_TI_1.T + B_TI_1 # 每个样本都会加上B
-        # result[N_dt * index * dp] = point[2]
-        # dp += 1
-        # A, B = freprecess.res(dt, info.T1_generate, info.T2, info.df)
-        # for i in range(N_dt - 2):
-        #     point = point @ A.T + B
-        #     result[N_dt * index * dp] = point[2]
-        #     dp += 1
 
 def Mz_relax(info, time:torch.Tensor, point, point_after_0):
     point_list = torch.zeros(len(time), 3)

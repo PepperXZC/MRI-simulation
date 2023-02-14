@@ -4,6 +4,7 @@ import math
 import sequence
 import freprecess
 import matplotlib.pyplot as plt
+import experiment
 
 import random
 def randomcolor():
@@ -37,6 +38,11 @@ class info:
         t_interval = 30,
         total_time = [600, 500], # 5-3-3
         num_excitation = 1,
+        fov = 10,
+        bandwidth = 3,
+        dt = 0.1,
+        roll_rate = 5,
+        c = 2
     ) -> None:
         '''
         在这里，整体的时间如下(按顺序)：
@@ -56,6 +62,13 @@ class info:
         self.t_interval = t_interval
         self.num_excitation = num_excitation
         self.m0 = torch.Tensor([0,0,1]).to(device).T
+        self.fov = fov
+        self.bandwidth = bandwidth
+        self.dt = dt
+        # 这个量代表 每 1 秒钟，血流流动 roll_rate 厘米
+        self.roll_rate = roll_rate
+        # 这个量代表画框下每1cm对应实际心肌部位的 c:real_length厘米
+        self.real_length = c
         # self.fa_slice = fa_slice # 由 Slice profile 给出, 
         # 是个 5 维向量，因为有5个fa
         # 先不管它的 sub-slice 版本！只是一个数
@@ -72,17 +85,21 @@ m0 = torch.Tensor([0,0,1]).to(device).T
 # result = sequence.molli_relax(test_info, m0)
 program = sequence.molli(test_info)
 # x = torch.arange(0, len(result), 1)
-program.simulation()
+# program.simulation()
 # for t in program.x_time:
 #     program.catch(t)
 # print([key[2] for key in result])
-for index in range(len(test_info.fa_10)):
-    angle = int(test_info.fa_10[index] * 180 / math.pi)
-    plt.plot(program.x_time[0], [key[2] for key in program.result[index]], color=randomcolor(), label=str(angle))
-    plt.legend(loc=0)
-plt.show()
+# for index in range(len(test_info.fa_10)):
+#     angle = int(test_info.fa_10[index] * 180 / math.pi)
+#     plt.plot(program.x_time[0], [key[2] for key in program.result[index]], color=randomcolor(), label=str(angle))
+#     plt.legend(loc=0)
+# plt.show()
 # plt.plot(program.x_time, [key[0] for key in program.result], color='r', label='Mx')
 # plt.plot(program.x_time, [key[1] for key in program.result], color='g', label='My')
 # plt.show()
 
 # print(program.x_time[0])
+
+# exp = experiment.pool(test_info)
+# exp.roll(7)
+# print(exp.pool)
