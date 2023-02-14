@@ -28,11 +28,12 @@ class info:
         TI_5 = [50, 150, 250, 350, 450],
         # TI_5 = [],
         TI_3 = [100, 200, 300],
+        readout_index = [0,5,1,6,2,7,3,4],
         # TI_3 = [],
         # 因为不知道第一个read开始之前有多少时间间隙
         FA_pulse = math.pi,
-        # FA_small =  [25 * math.pi / 180],
-        FA_small = torch.arange(5, 35, 5) * math.pi / 180,
+        FA_small =  [10 * math.pi / 180],
+        # FA_small = torch.arange(5, 35, 5) * math.pi / 180,
         # fa_slice = 10,
         df = 30,
         t_interval = 30,
@@ -69,6 +70,7 @@ class info:
         self.roll_rate = roll_rate
         # 这个量代表画框下每1cm对应实际心肌部位的 c:real_length厘米
         self.real_length = c
+        self.readout_index = readout_index
         # self.fa_slice = fa_slice # 由 Slice profile 给出, 
         # 是个 5 维向量，因为有5个fa
         # 先不管它的 sub-slice 版本！只是一个数
@@ -78,17 +80,42 @@ class info:
         # # 转化为 norm，我也不知道为什么非得这么做，先试试吧，可以删掉
         # self.theExp = self.theExp / torch.linalg.norm(self.theExp)
 
+    def get_readout_time(self):
+        return (self.TI_5 + self.TI_3)
 
-test_info = info()
+def main():
+    test_info = info()
 
-m0 = torch.Tensor([0,0,1]).to(device).T
-# result = sequence.molli_relax(test_info, m0)
-program = sequence.molli(test_info)
-# x = torch.arange(0, len(result), 1)
-# program.simulation()
-# for t in program.x_time:
-#     program.catch(t)
-# print([key[2] for key in result])
+    m0 = torch.Tensor([0,0,1]).to(device).T
+    # result = sequence.molli_relax(test_info, m0)
+    program = sequence.molli(test_info)
+    # x = torch.arange(0, len(result), 1)
+    program.simulation()
+    # for t in program.x_time:
+    #     program.catch(t)
+    # print([key[2] for key in result])
+    print(program.readout_time)
+    ro_time = torch.Tensor(program.readout_time)
+    index = [0,5,1,6,2,7,3,4]
+    ro_time = program.get_ro_time()
+    test_pool = experiment.pool(test_info)
+    pool_info = torch.zeros(len(ro_time), test_info.fov, test_info.fov)
+    last_t = 0
+    for i in range(len(ro_time)):
+        t_interval = ro_time[i] - last_t
+        test_pool.roll(t_interval)
+        pool_info[i] = test_pool.pool
+        last_t = ro_time[i]
+    # print(program.get_ro_time())
+    # print(program.x_time[0][:10])
+    # [0, 0.1, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8]
+    #  在 x_time 中存在数据缺省: 我们跳过了 TR * reptime 之间的间隔，选择直接得到结果了
+    # 需要补全这中间的间隔
+    print(pool_info[0][0][0])
+    print(program.x_time[0].index(pool_info[0][0][0]))
+    # print(program.readout533())
+
+main()
 # for index in range(len(test_info.fa_10)):
 #     angle = int(test_info.fa_10[index] * 180 / math.pi)
 #     plt.plot(program.x_time[0], [key[2] for key in program.result[index]], color=randomcolor(), label=str(angle))

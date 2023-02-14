@@ -54,6 +54,9 @@ class molli:
         # self.x_time = []
         # self.x_time.append(0)
         self.x_time = [[0] for _ in range(len(self.Rflip_10))]
+        # 设置时间戳，记录 readout 所在的时间点 目前只设置 Rflip_10 只有一个角度的情况
+        # 目前假设 TR * rep_time 之后得到一张图
+        self.readout_time = []
     
     def simulation(self):
         A, B = freprecess.res(self.dt, self.info.T1, self.info.T2, self.info.df)
@@ -76,7 +79,9 @@ class molli:
                     self.point = self.point @ self.Rflip_10[pulse_index].T
                     self.result[pulse_index].append(self.point)
                     # self.result = [temp_list + [self.point] for temp_list in self.result]
-                    self.x_time[pulse_index].append(self.x_time[pulse_index][-1] + self.info.TR * self.info.rep_time)
+                    after_read_time = self.x_time[pulse_index][-1] + self.info.TR * self.info.rep_time
+                    self.x_time[pulse_index].append(after_read_time)
+                    self.readout_time.append(after_read_time)
                     # self.x_time = [temp_list + [temp_list[-1] + self.info.TR * self.info.rep_time] for temp_list in self.x_time]
 
                     assert len(self.x_time[0]) == len(self.result[0])
@@ -102,7 +107,9 @@ class molli:
                     self.point = self.point @ self.Rflip_10[pulse_index].T
                     self.result[pulse_index].append(self.point)
                     # self.result = [temp_list + [self.point] for temp_list in self.result]
-                    self.x_time[pulse_index].append(self.x_time[pulse_index][-1] + self.info.TR * self.info.rep_time)
+                    after_read_time = self.x_time[pulse_index][-1] + self.info.TR * self.info.rep_time
+                    self.x_time[pulse_index].append(after_read_time)
+                    self.readout_time.append(after_read_time)
                     # self.x_time = [temp_list + [temp_list[-1] + self.info.TR * self.info.rep_time] for temp_list in self.x_time]
 
                     if i != len(self.info.TI_3) - 1:
@@ -123,46 +130,26 @@ class molli:
             t = round(t, len(str(self.dt))-2)
         assert t in self.x_time
         index = self.x_time.index(t)
-        return [temp_list[index] for temp_list in self.result]
+        # return [temp_list[index] for temp_list in self.result]
+        return self.result[index, 2]
+
+    
+    def get_ro_time(self):
+        torch_list = torch.Tensor(self.readout_time)
+        return torch_list[self.info.readout_index]
+    
+    def readout533(self):
+        time_list = self.get_ro_time()
+        res = torch.zeros(len(time_list), 3)
+        for i in range(len(time_list)):
+            if self.info.dt < 1:
+                temp_time = round(float(time_list[i]), len(str(self.info.dt)) - 2)
+            else:
+                temp_time = time_list[i]
+            # index = torch.where(self.x_time == temp_time)[0]
+            index = self.x_time[0].index(temp_time)
+            res[i] = self.result[0][index]
+        # 只输出Mz
+        return res[:, 2]
         # return self.result[index]
-
-def Mz_relax(info, time:torch.Tensor, point, point_after_0):
-    point_list = torch.zeros(len(time), 3)
-    point_list[:,2] = point * (1 - torch.exp(- time / info.T1)) + point_after_0[2] * torch.exp(- time / info.T1)
-    return point_list
-
-def molli_relax(info, point:torch.Tensor):
-    result = []
-    Rflip_180 = matrix_rot.yrot(torch.pi) # 180y
-    Rflip_10 = matrix_rot.yrot( info.fa_10 ) # 180y
-
-    result.append(point[2])
-
-    point = point @ Rflip_180.T
-    result.append(point[2])
-
-    dt = 0.01
-    time_before = torch.arange(0, info.t_before[0], dt)
-    point_before = Mz_relax(info, time_before, 1, point)
-    result += point_before[:, 2].tolist()
-    point = result[-1]
-
-    t_rest_5 = info.TI - info.t_before[0] - info.TR * 4
-
-    for i in range(4):
-        # point = point @ Rflip_10.T
-        point = torch.Tensor([0, 0, point]) @ Rflip_10.T
-        result.append(point[2])
-        # time_interval = torch.arange(info.t_before[0] + i * info.TR, info.t_before[0] + (i+1) * info.TR, dt)
-        time_interval = torch.arange(0, info.TR, dt)
-        point_interval = Mz_relax(info, time_interval, 1, point)
-        result += point_interval[:, 2].tolist()
-        point = result[-1]
-    
-    point = torch.Tensor([0, 0, point])
-    time_rest = torch.arange(0, t_rest_5, dt)
-    point_rest = Mz_relax(info, time_rest, 1, point)
-    result += point_before[:, 2].tolist()
-    point = result[-1]
-    
-    return result
+        
