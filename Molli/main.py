@@ -111,10 +111,17 @@ def main():
     # for t in program.x_time:
     #     program.catch(t)
     # print([key[2] for key in result])
+    # plt.plot(program.x_time[0], [key[2] for key in program.result[index]], color=randomcolor(), label=str(angle))
+    for index in range(len(test_info.fa_10)):
+        angle = int(test_info.fa_10[index] * 180 / math.pi)
+        plt.plot(program.x_time[0], [key[2] for key in program.result[index]], color=randomcolor(), label=str(angle))
+    plt.plot(program.x_time[0], [key[0] for key in program.result], color='r', label='Mx')
+    plt.plot(program.x_time[0], [key[1] for key in program.result], color='g', label='My')
+    plt.show()
     # print(program.readout_time)
     # plot_5_graph(test_info, program)
-    test_pool = readout_pool(test_info, program)
-    print(test_pool[0])
+    # test_pool = readout_pool(test_info, program)
+    # print(test_pool[0])
     
 
     # print(program.get_ro_time())
