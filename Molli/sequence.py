@@ -5,9 +5,10 @@ import freprecess
 import math
 import sys
 import copy
+import utils
 
 # 默认全部都是 180y, 10y
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = utils.device
 
 # point: m*3，m为抽样的点的个数
 def rot(point:torch.Tensor, phi = torch.pi):
