@@ -5,54 +5,62 @@ import sequence
 import freprecess
 import matplotlib.pyplot as plt
 import experiment
+import utils
 
 import random
+
+device = utils.device
+
+
 def randomcolor():
-    colorArr = ['1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']
+    colorArr = ['1', '2', '3', '4', '5', '6', '7',
+                '8', '9', 'A', 'B', 'C', 'D', 'E', 'F']
     color = ""
     for i in range(6):
-        color += colorArr[random.randint(0,14)]
+        color += colorArr[random.randint(0, 14)]
     return "#"+color
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 # 默认在[0, 10000] 内寻找 T1
 # 默认 TI 是 torch.tensor
+
+
 class info:
     def __init__(
-        self, 
-        T1_generate = 100, 
-        T2 = 45, 
-        TR = 10,
-        rep_time = 1, # 假设每个RF给出 rep_time 个读取次数 
-        TI_5 = [50, 150, 250, 350, 450],
+        self,
+        T1_generate=100,
+        T2=45,
+        TR=10,
+        rep_time=1,  # 假设每个RF给出 rep_time 个读取次数
+        TI_5=[50, 150, 250, 350, 450],
         # TI_5 = [],
-        TI_3 = [100, 200, 300],
-        readout_index = [0,5,1,6,2,7,3,4],
+        TI_3=[100, 200, 300],
+        readout_index=[0, 5, 1, 6, 2, 7, 3, 4],
         # TI_3 = [],
         # 因为不知道第一个read开始之前有多少时间间隙
-        FA_pulse = math.pi,
+        FA_pulse=math.pi,
         # FA_small =  [10 * math.pi / 180],
-        FA_small = torch.arange(5, 35, 5) * math.pi / 180,
+        FA_small=torch.arange(5, 90, 5) * math.pi / 180,
         # fa_slice = 10,
-        df = 30,
-        t_interval = 30,
-        total_time = [600, 500], # 5-3-3
-        num_excitation = 1,
-        fov = 10,
-        bandwidth = 3,
-        dt = 0.1,
-        roll_rate = 5,
-        c = 2
+        df=30,
+        t_interval=30,
+        total_time=[600, 500],  # 5-3-3
+        num_excitation=1,
+        fov=10,
+        bandwidth=3,
+        dt=0.1,
+        roll_rate=5,
+        c=2
     ) -> None:
         '''
         在这里，整体的时间如下(按顺序)：
         total_time = (180y + TI_5[0] + TR * rep_time + TI_5[1] - ...)
         其中 TE 为每个 TR 中 10y时刻 到 readout 梯度的中点
         '''
-        self.TI_5 = TI_5 # 每个 molli 中有两个TI
-        self.TI_3 = TI_3 # 每个 molli 中有两个TI
-        self.T1 = T1_generate # float64
+        self.TI_5 = TI_5  # 每个 molli 中有两个TI
+        self.TI_3 = TI_3  # 每个 molli 中有两个TI
+        self.T1 = T1_generate  # float64
         self.rep_time = rep_time
         self.fa_10 = FA_small
         self.TR = TR
@@ -62,7 +70,7 @@ class info:
         self.fa_180 = FA_pulse
         self.t_interval = t_interval
         self.num_excitation = num_excitation
-        self.m0 = torch.Tensor([0,0,1]).to(device).T
+        self.m0 = torch.Tensor([0, 0, 1]).to(device).T
         self.fov = fov
         self.bandwidth = bandwidth
         self.dt = dt
@@ -71,24 +79,27 @@ class info:
         # 这个量代表画框下每1cm对应实际心肌部位的 c:real_length厘米
         self.real_length = c
         self.readout_index = readout_index
-        # self.fa_slice = fa_slice # 由 Slice profile 给出, 
+        # self.fa_slice = fa_slice # 由 Slice profile 给出,
         # 是个 5 维向量，因为有5个fa
         # 先不管它的 sub-slice 版本！只是一个数
 
         # self.theExp = torch.exp(-TI / T1_generate)
-        
+
         # # 转化为 norm，我也不知道为什么非得这么做，先试试吧，可以删掉
         # self.theExp = self.theExp / torch.linalg.norm(self.theExp)
 
     def get_readout_time(self):
         return (self.TI_5 + self.TI_3)
 
+
 def plot_5_graph(info_sample, molli_sample):
     for index in range(len(info_sample.fa_10)):
         angle = int(info_sample.fa_10[index] * 180 / math.pi)
-        plt.plot(molli_sample.x_time[0], [key[2] for key in molli_sample.result[index]], color=randomcolor(), label=str(angle))
+        plt.plot(molli_sample.x_time[0], [
+                 key[2] for key in molli_sample.result[index]], color=randomcolor(), label=str(angle))
     plt.legend(loc=0)
     plt.show()
+
 
 def readout_pool(info_sample, molli_sample):
     ro_time = molli_sample.get_ro_time()
@@ -102,6 +113,7 @@ def readout_pool(info_sample, molli_sample):
         last_t = ro_time[i]
     return pool_info
 
+
 def main():
     test_info = info()
 
@@ -114,19 +126,25 @@ def main():
     # plt.plot(program.x_time[0], [key[2] for key in program.result[index]], color=randomcolor(), label=str(angle))
     for index in range(len(test_info.fa_10)):
         angle = int(test_info.fa_10[index] * 180 / math.pi)
-        plt.plot(program.x_time[0], [key[2] for key in program.result[index]], color=randomcolor(), label=str(angle))
-    plt.plot(program.x_time[0], [key[0] for key in program.result], color='r', label='Mx')
-    plt.plot(program.x_time[0], [key[1] for key in program.result], color='g', label='My')
+        plt.plot(
+            program.x_time[0],
+            [key.cpu()[2] for key in program.result[index]],
+            color=randomcolor(),
+            label=str(angle)
+        )
+    # plt.plot(program.x_time[0], [key.cpu()[0]
+    #          for key in program.result], color='r', label='Mx')
+    # plt.plot(program.x_time[0], [key.cpu()[1]
+    #          for key in program.result], color='g', label='My')
     plt.show()
     # print(program.readout_time)
     # plot_5_graph(test_info, program)
     # test_pool = readout_pool(test_info, program)
     # print(test_pool[0])
-    
 
     # print(program.get_ro_time())
     # print(len(program.x_time[0]))
-    
+
     # 下面这个过程检查 是否每两个时刻间隔都是 0.1
     # for i in range(1, len(program.x_time[0])):
     #     if (len(str(program.x_time[0][i])) - len(str(program.x_time[0][i-1]))) > 1:
@@ -138,6 +156,7 @@ def main():
     # print(pool_info[0][0][0])
     # print(program.x_time[0].index(pool_info[0][0][0]))
     # print(program.readout533())
+
 
 main()
 # for index in range(len(test_info.fa_10)):
