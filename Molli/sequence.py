@@ -142,9 +142,9 @@ class molli:
         return self.result[index, 2]
 
     
-    def get_ro_time(self):
-        torch_list = torch.Tensor(self.readout_time)
-        return torch_list[self.info.readout_index]
+    def get_ro_time(self) -> list:
+        # torch_list = torch.Tensor(self.readout_time)
+        return self.readout_time[:8]
     
     def readout533(self):
         time_list = self.get_ro_time()

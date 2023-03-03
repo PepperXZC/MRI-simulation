@@ -33,10 +33,12 @@ class pool:
         while (rest_time - each_time >= 0):
             self.vassel += each_time
             rest_time -= each_time
+            # 默认向下流动
             self.vassel = torch.roll(self.vassel, 1, 0)
             for i in range(len(self.vassel[0])):
                 # if random.randint(1, 10) < self.half:
                 self.vassel[0][i] = 0
+            print(self.vassel)
         
         a, b = int(self.info.fov) // 2, int(self.info.bandwidth) // 2
         lower, upper = a - b, a + b
