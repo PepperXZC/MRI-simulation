@@ -39,7 +39,7 @@ class info:
         t_interval = 30,
         total_time = [600, 500], # 5-3-3
         num_excitation = 1,
-        fov = 10,
+        fov = 5,
         bandwidth = 3,
         dt = 0.1,
         roll_rate = 5,
@@ -92,6 +92,7 @@ def plot_5_graph(info_sample, molli_sample):
 
 def readout_pool(info_sample, molli_sample):
     ro_time = molli_sample.get_ro_time()
+    # print(ro_time)
     test_pool = experiment.pool(info_sample)
     pool_info = torch.zeros(len(ro_time), info_sample.fov, info_sample.fov)
     last_t = 0
@@ -100,7 +101,8 @@ def readout_pool(info_sample, molli_sample):
         test_pool.roll(t_interval)
         pool_info[i] = test_pool.pool
         last_t = ro_time[i]
-    return pool_info
+    # pool_info = torch.round(pool_info)
+    return pool_info[info_sample.readout_index]
 
 def main():
     test_info = info()
@@ -112,16 +114,18 @@ def main():
     #     program.catch(t)
     # print([key[2] for key in result])
     # plt.plot(program.x_time[0], [key[2] for key in program.result[index]], color=randomcolor(), label=str(angle))
-    for index in range(len(test_info.fa_10)):
-        angle = int(test_info.fa_10[index] * 180 / math.pi)
-        plt.plot(program.x_time[0], [key[2] for key in program.result[index]], color=randomcolor(), label=str(angle))
-    plt.plot(program.x_time[0], [key[0] for key in program.result], color='r', label='Mx')
-    plt.plot(program.x_time[0], [key[1] for key in program.result], color='g', label='My')
-    plt.show()
+
+    # 画图
+    # for index in range(len(test_info.fa_10)):
+    #     angle = int(test_info.fa_10[index] * 180 / math.pi)
+    #     plt.plot(program.x_time[0], [key[2] for key in program.result[index]], color=randomcolor(), label=str(angle))
+    # plt.plot(program.x_time[0], [key[0] for key in program.result], color='r', label='Mx')
+    # plt.plot(program.x_time[0], [key[1] for key in program.result], color='g', label='My')
+    # plt.show()
     # print(program.readout_time)
     # plot_5_graph(test_info, program)
-    # test_pool = readout_pool(test_info, program)
-    # print(test_pool[0])
+    test_pool = readout_pool(test_info, program)
+    print(test_pool)
     
 
     # print(program.get_ro_time())
