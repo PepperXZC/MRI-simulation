@@ -91,6 +91,9 @@ def plot_5_graph(info_sample, molli_sample):
     plt.show()
 
 def readout_pool(info_sample, molli_sample):
+    '''
+    pool_info: 血池 (len(ro_time), fov, fov)
+    '''
     ro_time = molli_sample.get_ro_time()
     # print(ro_time)
     test_pool = experiment.pool(info_sample)
@@ -103,6 +106,26 @@ def readout_pool(info_sample, molli_sample):
         last_t = ro_time[i]
     # pool_info = torch.round(pool_info)
     return pool_info[info_sample.readout_index]
+
+def pool_Mz(pool_tensor, molli_sample, i):
+    '''
+    将血池中的 time 转换为对应序列中的 Mz 
+    '''
+    # 寻找该 pool 在序列中给出的x_time的索引
+    Mz = torch.Tensor([key[2] for key in molli_sample.result[i]])
+    res_index = index_find(molli_sample.x_time[0], pool_tensor[0])
+    # assert all(torch.Tensor(molli_sample.x_time[0])[res_index].reshape(pool_tensor[0].shape) == pool_tensor[0])
+    res = Mz[res_index]
+    return res
+
+def index_find(arr1, arr2):
+    '''
+    假设arr1, arr2中都没有重复值，且arr1的值在arr2中只会出现小于等于1次，给出arr2各值在arr1中的索引
+    '''
+    assert len(arr2.shape) == 2
+    if isinstance(arr1, list):
+        arr1 = torch.Tensor(arr1)
+    return torch.where(arr1==arr2[:,:,None])[2].reshape(arr2.shape)
 
 def main():
     test_info = info()
@@ -119,13 +142,18 @@ def main():
     # for index in range(len(test_info.fa_10)):
     #     angle = int(test_info.fa_10[index] * 180 / math.pi)
     #     plt.plot(program.x_time[0], [key[2] for key in program.result[index]], color=randomcolor(), label=str(angle))
+
     # plt.plot(program.x_time[0], [key[0] for key in program.result], color='r', label='Mx')
     # plt.plot(program.x_time[0], [key[1] for key in program.result], color='g', label='My')
     # plt.show()
     # print(program.readout_time)
     # plot_5_graph(test_info, program)
+
+    # 血池
     test_pool = readout_pool(test_info, program)
-    print(test_pool)
+    pool_sim = pool_Mz(test_pool, program, 3)
+    print(pool_sim)
+    # print(test_pool)
     
 
     # print(program.get_ro_time())

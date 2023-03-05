@@ -38,7 +38,7 @@ class pool:
             for i in range(len(self.vassel[0])):
                 # if random.randint(1, 10) < self.half:
                 self.vassel[0][i] = 0
-            print(self.vassel)
+            # print(self.vassel)
         
         a, b = int(self.info.fov) // 2, int(self.info.bandwidth) // 2
         lower, upper = a - b, a + b
