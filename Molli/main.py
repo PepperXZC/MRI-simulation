@@ -109,11 +109,13 @@ def readout_pool(info_sample, molli_sample):
 
 def pool_Mz(pool_tensor, molli_sample, i):
     '''
-    将血池中的 time 转换为对应序列中的 Mz 
+    将血池中的 time 转换为对应序列中的 Mz .
+    i: 第 i 个 FA 对应的 result
     '''
     # 寻找该 pool 在序列中给出的x_time的索引
+    assert pool_tensor.ndim == 2
     Mz = torch.Tensor([key[2] for key in molli_sample.result[i]])
-    res_index = index_find(molli_sample.x_time[0], pool_tensor[0])
+    res_index = index_find(molli_sample.x_time[0], pool_tensor)
     # assert all(torch.Tensor(molli_sample.x_time[0])[res_index].reshape(pool_tensor[0].shape) == pool_tensor[0])
     res = Mz[res_index]
     return res
@@ -150,9 +152,16 @@ def main():
     # plot_5_graph(test_info, program)
 
     # 血池
+    # 后面默认使用 FA = 30 的信息来处理
     test_pool = readout_pool(test_info, program)
-    pool_sim = pool_Mz(test_pool, program, 3)
+    # pool_sim = pool_Mz(test_pool, program, 5)
+    pool_sim = torch.zeros_like(test_pool)
+    for p in range(test_pool.shape[0]):
+        pool_sim[p] = pool_Mz(test_pool[p], program, 5)
     print(pool_sim)
+    print(test_pool)
+
+    experiment.train(data=torch.Tensor(program.get_ro_time()), y_true = pool_sim, info=test_info)    
     # print(test_pool)
     
 

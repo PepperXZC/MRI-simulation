@@ -8,6 +8,7 @@ import freprecess
 import random
 import math
 import sequence
+from torch import nn
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -44,4 +45,33 @@ class pool:
         lower, upper = a - b, a + b
         self.pool[:, lower:upper+1] = self.vassel
 
-# class 
+class Model(nn.Module):
+    def __init__(self, shape) -> None:
+        super(Model, self).__init__()
+        self.A = nn.Parameter(torch.normal(0, 0.01, size=shape, requires_grad=True))
+        self.B = nn.Parameter(torch.normal(0, 0.01, size=shape, requires_grad=True))
+        self.t1 = nn.Parameter(torch.ones(1, requires_grad=True) * 10)
+    
+    def forward(self, t_sequence):
+        return torch.Tensor([(self.A - self.B * torch.exp(t / self.t1)).detach().numpy() for t in t_sequence])
+
+
+
+def train(num_epochs = 100, lr = 0.01, data = None, y_true = None, info = None):
+    X, y = data, y_true
+    model = Model(shape=(info.fov, info.fov))
+    loss = nn.MSELoss(reduction='none')
+    trainer = torch.optim.Adam(model.parameters(), lr=lr)
+    for epoch in range(num_epochs):
+        y_pred = model(X)
+        y_pred.requires_grad_(True)
+        model.A.requires_grad_(True)
+        model.B.requires_grad_(True)
+        model.t1.requires_grad_(True)
+        l = loss(y_pred, y)
+        trainer.zero_grad()
+        l.mean().backward()
+        trainer.step()
+        print(epoch + 1, l[2][2][2])
+    T1 = model.t1 * ((model.B / model.A) - 1)
+    print(T1)
